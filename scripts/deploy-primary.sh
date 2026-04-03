@@ -1,34 +1,41 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Deploying primary region infrastructure..."
-
-# Create logs directory
-mkdir -p logs
+echo "🚀 Deploying primary region infrastructure and applications..."
 
 # Deploy Terraform for primary region
-echo "📦 Deploying Terraform infrastructure..."
+echo "Deploying Terraform infrastructure..."
 cd terraform/primary-region
+
+# Initialize and apply Terraform
 terraform init
+terraform validate
 terraform plan -out=tfplan
-terraform apply tfplan
-cd ../..
+terraform apply -auto-approve tfplan
 
-# Get EKS cluster credentials
-echo "🔑 Configuring kubectl for primary cluster..."
-aws eks update-kubeconfig --region us-east-1 --name primary-cluster --alias primary-cluster
+# Get outputs for Kubernetes deployment
+S3_BUCKET=$(terraform output -raw primary_backup_bucket 2>/dev/null || echo "")
+ROUTE53_ZONE=$(terraform output -raw route53_zone_id 2>/dev/null || echo "")
 
-# Deploy Kubernetes resources
-echo "☸️  Deploying Kubernetes resources..."
-kubectl apply -f kubernetes/primary/
+cd ../../
 
-# Wait for deployment to be ready
-echo "⏳ Waiting for deployment to be ready..."
-kubectl wait --for=condition=available --timeout=300s deployment/sample-app
+# Configure kubectl for primary EKS cluster
+echo "Configuring kubectl for primary cluster..."
+aws eks update-kubeconfig --region ${TF_VAR_primary_region:-us-east-1} --name ${TF_VAR_existing_eks_cluster_name:-main-cluster} --alias primary-cluster
 
-# Get LoadBalancer URL
-echo "🌐 Getting LoadBalancer URL..."
-kubectl get svc sample-app-service
+# Verify cluster access
+kubectl cluster-info --context=primary-cluster > logs/primary-cluster-info.log
 
-echo "✅ Primary region deployment completed successfully!"
+# Deploy Kubernetes applications
+echo "Deploying Kubernetes applications to primary cluster..."
+kubectl apply -f kubernetes/primary/ --context=primary-cluster
 
+# Wait for deployments to be ready
+echo "Waiting for deployments to be ready..."
+kubectl wait --for=condition=available --timeout=300s deployment/sample-app --context=primary-cluster
+
+# Get load balancer endpoint
+echo "Getting load balancer endpoint..."
+kubectl get services --context=primary-cluster > logs/primary-services.log
+
+echo "✅ Primary region deployment complete"
