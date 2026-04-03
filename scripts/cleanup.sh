@@ -1,22 +1,35 @@
 #!/bin/bash
 set -e
 
-echo "🧹 Cleaning up test resources..."
+echo "🧹 Cleaning up DR demo resources..."
 
-# Scale down secondary region deployment
-echo "📉 Scaling down secondary region deployment..."
-kubectl scale deployment sample-app --replicas=1 --context=secondary-cluster || echo "Deployment not found or already scaled"
+# Cleanup Kubernetes resources
+echo "Cleaning up Kubernetes resources..."
+kubectl delete -f kubernetes/primary/ --context=primary-cluster --ignore-not-found=true || true
+kubectl delete -f kubernetes/secondary/ --context=secondary-cluster --ignore-not-found=true || true
 
-# Clean up any test pods or services
-echo "🗑️  Cleaning up test resources..."
-kubectl delete pods -l app=test --context=primary-cluster --ignore-not-found=true
-kubectl delete pods -l app=test --context=secondary-cluster --ignore-not-found=true
+# Cleanup Terraform resources (secondary first)
+echo "Destroying secondary region infrastructure..."
+cd terraform/secondary-region
+terraform destroy -auto-approve || true
+cd ../primary-region
 
-# Clean up old log files (keep last 5)
-echo "📋 Cleaning up old log files..."
-if [ -d "logs" ]; then
-    find logs -name "dr-test-*.log" -type f | sort -r | tail -n +6 | xargs rm -f
-fi
+echo "Destroying primary region infrastructure..."
+terraform destroy -auto-approve || true
+cd ../../
 
-echo "✅ Cleanup completed"
+# Cleanup local files
+echo "Cleaning up local files..."
+rm -f terraform/primary-region/tfplan
+rm -f terraform/secondary-region/tfplan
+rm -f terraform/primary-region/.terraform.lock.hcl
+rm -f terraform/secondary-region/.terraform.lock.hcl
+rm -rf terraform/primary-region/.terraform
+rm -rf terraform/secondary-region/.terraform
 
+# Cleanup kubectl contexts
+echo "Cleaning up kubectl contexts..."
+kubectl config delete-context primary-cluster 2>/dev/null || true
+kubectl config delete-context secondary-cluster 2>/dev/null || true
+
+echo "✅ Cleanup complete"
