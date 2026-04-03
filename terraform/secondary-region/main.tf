@@ -8,13 +8,12 @@ terraform {
 }
 
 provider "aws" {
-  region = var.secondary_region
-}
+  region = var.primary_region 
 
 # Data sources for existing resources
 data "aws_caller_identity" "current" {}
 
-# Existing VPC in secondary region
+# Use the SAME existing VPC as primary
 data "aws_vpc" "existing" {
   filter {
     name   = "tag:Name"
@@ -22,13 +21,51 @@ data "aws_vpc" "existing" {
   }
 }
 
-# S3 Bucket Lifecycle Policy for DR backups (using existing bucket)
+# Get different subnets for DR simulation
+data "aws_subnets" "existing_private_dr" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.existing.id]
+  }
+  
+  filter {
+    name   = "tag:Type"
+    values = ["private"]
+  }
+  
+  # Get different AZs for DR
+  filter {
+    name   = "availability-zone"
+    values = [var.dr_availability_zones]
+  }
+}
+
+data "aws_subnets" "existing_public_dr" {
+  filter {
+    name   = "vpc-id"
+    values = [data.aws_vpc.existing.id]
+  }
+  
+  filter {
+    name   = "tag:Type"
+    values = ["public"]
+  }
+  
+  filter {
+    name   = "availability-zone"
+    values = [var.dr_availability_zones]
+  }
+}
+
+# S3 Bucket Lifecycle Policy for DR backups
 data "aws_s3_bucket" "secondary_backups" {
+  count  = var.secondary_backup_bucket_name != "" ? 1 : 0
   bucket = var.secondary_backup_bucket_name
 }
 
 resource "aws_s3_bucket_lifecycle_configuration" "secondary_backups" {
-  bucket = data.aws_s3_bucket.secondary_backups.id
+  count  = var.secondary_backup_bucket_name != "" ? 1 : 0
+  bucket = data.aws_s3_bucket.secondary_backups[0].id
 
   rule {
     id     = "dr_backup_lifecycle"
@@ -59,33 +96,33 @@ resource "aws_s3_bucket_lifecycle_configuration" "secondary_backups" {
   }
 }
 
-# Route 53 Record for DR region direct access
+# Route 53 Records for DR (different subdomain)
 data "aws_route53_zone" "existing" {
+  count   = var.route53_zone_id != "" ? 1 : 0
   zone_id = var.route53_zone_id
 }
 
 resource "aws_route53_record" "dr_direct" {
-  zone_id = data.aws_route53_zone.existing.zone_id
+  count   = var.route53_zone_id != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.existing[0].zone_id
   name    = "dr.${var.domain_name}"
   type    = "CNAME"
   ttl     = 300
   records = [var.secondary_app_endpoint]
 }
 
-# Route 53 Record for API endpoint in DR
 resource "aws_route53_record" "api_dr" {
-  zone_id = data.aws_route53_zone.existing.zone_id
+  count   = var.route53_zone_id != "" ? 1 : 0
+  zone_id = data.aws_route53_zone.existing[0].zone_id
   name    = "api-dr.${var.domain_name}"
   type    = "CNAME"
   ttl     = 300
   records = [var.secondary_api_endpoint]
 }
 
-# Route 53 Record for admin access in DR
-resource "aws_route53_record" "admin_dr" {
-  zone_id = data.aws_route53_zone.existing.zone_id
-  name    = "admin-dr.${var.domain_name}"
-  type    = "CNAME"
-  ttl     = 300
-  records = [var.secondary_admin_endpoint]
-}
+# CloudWatch Dashboard for DR monitoring
+resource "aws_cloudwatch_dashboard" "dr_dashboard" {
+  dashboard_name = "${var.project_name}-dr-dashboard"
+
+  dashboard_body = jsonencode({
+   
