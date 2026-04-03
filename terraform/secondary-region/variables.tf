@@ -31,13 +31,13 @@ variable "node_desired_size_dr" {
 variable "node_max_size" {
   description = "Maximum number of nodes in the EKS node group"
   type        = number
-  default     = 6
+  default     = 3
 }
 
 variable "node_min_size_dr" {
   description = "Minimum number of nodes in the DR EKS node group"
   type        = number
-  default     = 0
+  default     = 1
 }
 
 variable "environment" {
