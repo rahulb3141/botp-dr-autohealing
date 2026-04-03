@@ -13,7 +13,7 @@ variable "secondary_region" {
 variable "kubernetes_version" {
   description = "Kubernetes version for EKS cluster"
   type        = string
-  default     = "1.28"
+  default     = "1.34"
 }
 
 variable "node_instance_type" {
