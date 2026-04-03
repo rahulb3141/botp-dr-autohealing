@@ -1,1 +1,116 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sample-app
+  namespace: default
+  labels:
+    app: sample-app
+    environment: dr
+spec:
+  replicas: 1  # Pilot light - minimal replicas
+  selector:
+    matchLabels:
+      app: sample-app
+  template:
+    metadata:
+      labels:
+        app: sample-app
+        environment: dr
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.21
+        ports:
+        - containerPort: 80
+          name: http
+        
+        # Liveness probe for auto-healing
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        
+        # Resource limits for stability
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        
+        # Environment variables
+        env:
+        - name: REGION
+          value: "us-west-2"
+        - name: ENVIRONMENT
+          value: "dr"
+        
+        # Custom nginx config
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+      
+      volumes:
+      - name: nginx-config
+        configMap:
+          name: nginx-config-dr
+      
+      # Ensure pods are distributed across nodes
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                  - sample-app
+              topologyKey: kubernetes.io/hostname
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config-dr
+  namespace: default
+data:
+  default.conf: |
+    server {
+        listen 80;
+        server_name localhost;
+        
+        location / {
+            root /usr/share/nginx/html;
+            index index.html index.htm;
+        }
+        
+        location /health {
+            access_log off;
+            return 200 "healthy-dr\n";
+            add_header Content-Type text/plain;
+        }
+        
+        location /ready {
+            access_log off;
+            return 200 "ready-dr\n";
+            add_header Content-Type text/plain;
+        }
+    }
 
