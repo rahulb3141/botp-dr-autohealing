@@ -21,7 +21,7 @@ cd ../../
 
 # Configure kubectl for primary EKS cluster
 echo "Configuring kubectl for primary cluster..."
-aws eks update-kubeconfig --region ${TF_VAR_primary_region:-us-east-1} --name ${TF_VAR_existing_eks_cluster_name:-main-cluster} --alias primary-cluster
+aws eks update-kubeconfig --region ${TF_VAR_primary_region:-us-east-1} --name ${TF_VAR_existing_eks_cluster_name:-eks-cluster} --alias primary-cluster
 
 # Verify cluster access
 kubectl cluster-info --context=primary-cluster > logs/primary-cluster-info.log
