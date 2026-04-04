@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: sample-app
+  name: sample-app-dr
   namespace: default
   labels:
-    app: sample-app
+    app: sample-app-dr
     environment: dr
 spec:
   replicas: 1  # Pilot light - minimal replicas
   selector:
     matchLabels:
-      app: sample-app
+      app: sample-app-dr
   template:
     metadata:
       labels:
-        app: sample-app
+        app: sample-app-dr
         environment: dr
     spec:
       containers:
@@ -24,65 +24,40 @@ spec:
         - containerPort: 80
           name: http
         
-        # Liveness probe for auto-healing
-        livenessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 3
-        
-        # Readiness probe
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 80
-          initialDelaySeconds: 5
-          periodSeconds: 5
-          timeoutSeconds: 3
-          failureThreshold: 3
-        
-        # Resource limits for stability
-        resources:
-          requests:
-            memory: "128Mi"
-            cpu: "100m"
-          limits:
-            memory: "256Mi"
-            cpu: "200m"
-        
-        # Environment variables
+        # Environment variables to distinguish DR
         env:
         - name: REGION
-          value: "us-west-2"
+          value: "us-east-1"
         - name: ENVIRONMENT
           value: "dr"
+        - name: AZ_PREFERENCE
+          value: "us-east-1b,us-east-1c"  # Different AZs
         
-        # Custom nginx config
+        # Custom nginx config for DR
         volumeMounts:
         - name: nginx-config
           mountPath: /etc/nginx/conf.d
+        - name: dr-content
+          mountPath: /usr/share/nginx/html
       
       volumes:
       - name: nginx-config
         configMap:
           name: nginx-config-dr
+      - name: dr-content
+        configMap:
+          name: dr-content
       
-      # Ensure pods are distributed across nodes
+      # Force scheduling to different AZs
       affinity:
-        podAntiAffinity:
+        nodeAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:
           - weight: 100
-            podAffinityTerm:
-              labelSelector:
-                matchExpressions:
-                - key: app
-                  operator: In
-                  values:
-                  - sample-app
-              topologyKey: kubernetes.io/hostname
+            preference:
+              matchExpressions:
+              - key: topology.kubernetes.io/zone
+                operator: In
+                values: ["us-east-1b", "us-east-1c"]
 
 ---
 apiVersion: v1
@@ -103,14 +78,39 @@ data:
         
         location /health {
             access_log off;
-            return 200 "healthy-dr\n";
+            return 200 "healthy-dr-$(hostname)\n";
             add_header Content-Type text/plain;
         }
         
-        location /ready {
+        location /status {
             access_log off;
-            return 200 "ready-dr\n";
+            return 200 "DR Environment - AZ: us-east-1b/1c\n";
             add_header Content-Type text/plain;
         }
     }
 
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dr-content
+  namespace: default
+data:
+  index.html: |
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>DR Environment</title>
+        <style>
+            body { font-family: Arial; text-align: center; background: #f0f8ff; }
+            .dr-banner { background: #ff6b6b; color: white; padding: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="dr-banner">
+            <h1>🚨 DISASTER RECOVERY ENVIRONMENT 🚨</h1>
+            <p>This is the DR instance running in different AZs</p>
+            <p>Region: us-east-1 | AZs: us-east-1b, us-east-1c</p>
+        </div>
+    </body>
+    </html>
