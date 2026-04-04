@@ -7,6 +7,7 @@ pipeline {
         TF_VAR_primary_region = 'us-east-1'
         TF_VAR_secondary_region = 'us-east-1'
         TF_VAR_existing_vpc_name = 'eks-vpc'
+        TF_VAR_domain_name = 'mydrdemo.local'
     }
     
     stages {
