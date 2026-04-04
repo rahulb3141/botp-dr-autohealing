@@ -37,7 +37,7 @@ data "aws_subnets" "existing_private_dr" {
   # Get different AZs for DR
   filter {
     name   = "availability-zone"
-    values = [var.dr_availability_zones]
+    values = var.dr_availability_zones
   }
 }
 
@@ -54,7 +54,7 @@ data "aws_subnets" "existing_public_dr" {
   
   filter {
     name   = "availability-zone"
-    values = [var.dr_availability_zones]
+    values = var.dr_availability_zones
   }
 }
 
