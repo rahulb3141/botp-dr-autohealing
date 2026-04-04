@@ -28,11 +28,6 @@ variable "existing_replication_role_name" {
   default     = "s3-replication-role"
 }
 
-variable "domain_name" {
-  description = "Domain name for the application"
-  type        = string
-  default     = "example.com"
-}
 
 variable "associate_with_vpc" {
   description = "Whether to associate Route53 zone with VPC (private hosted zone)"
