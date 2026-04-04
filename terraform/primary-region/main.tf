@@ -211,9 +211,9 @@ resource "aws_s3_bucket_replication_configuration" "replication" {
 #   records         = [var.secondary_app_endpoint]
 # }
 
-# # Random string for unique bucket names
-# resource "random_string" "bucket_suffix" {
-#   length  = 8
-#   special = false
-#   upper   = false
-# }
+ # Random string for unique bucket names
+ resource "random_string" "bucket_suffix" {
+   length  = 8
+   special = false
+   upper   = false
+ }
