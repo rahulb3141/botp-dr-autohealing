@@ -13,7 +13,7 @@ variable "primary_region" {
 variable "existing_vpc_name" {
   description = "Name of the existing VPC to use (same as primary)"
   type        = string
-  default     = "main-vpc"
+  default     = "eks-vpc"
 }
 
 variable "dr_availability_zones" {
