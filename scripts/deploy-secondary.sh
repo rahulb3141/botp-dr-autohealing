@@ -15,16 +15,9 @@ cd ../../
 echo "Deploying DR applications to existing cluster..."
 aws eks update-kubeconfig --region ${TF_VAR_primary_region:-us-east-1} --name eks-cluster
 
-# Deploy DR applications from secondary directory
-echo "Deploying DR applications..."
-if [ -d "kubernetes/secondary" ]; then
-    echo "Found secondary Kubernetes manifests, deploying..."
-    kubectl apply -f kubernetes/secondary/
-else
-    echo "No secondary manifests found, creating sample deployment..."
-    kubectl create deployment sample-app-dr --image=nginx:latest --replicas=2
-    kubectl expose deployment sample-app-dr --port=80 --type=LoadBalancer
-fi
+# Deploy all applications recursively
+echo "Deploying applications recursively..."
+kubectl apply -f kubernetes/ --recursive
 
 # Wait for deployments to be ready
 echo "Waiting for deployments to be ready..."
@@ -36,5 +29,7 @@ mkdir -p logs
 kubectl get services > logs/dr-services.log || true
 kubectl get pods
 kubectl get services
+kubectl get ingress
 
 echo "✅ DR environment deployment complete"
+echo "✅ Both primary and DR applications deployed successfully"
