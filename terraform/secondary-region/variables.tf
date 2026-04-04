@@ -4,44 +4,78 @@ variable "project_name" {
   default     = "dr-demo"
 }
 
-variable "secondary_region" {
-  description = "Secondary AWS region for DR"
+variable "primary_region" {
+  description = "Primary AWS region (same for DR demo)"
   type        = string
-  default     = "us-west-2"
+  default     = "us-east-1"
 }
 
-variable "kubernetes_version" {
-  description = "Kubernetes version for EKS cluster"
+variable "existing_vpc_name" {
+  description = "Name of the existing VPC to use (same as primary)"
   type        = string
-  default     = "1.34"
+  default     = "main-vpc"
 }
 
-variable "node_instance_type" {
-  description = "EC2 instance type for EKS nodes"
+variable "dr_availability_zones" {
+  description = "Availability zones for DR (different from primary)"
+  type        = list(string)
+  default     = ["us-east-1b", "us-east-1c"]  # Different AZs for DR simulation
+}
+
+variable "domain_name" {
+  description = "Domain name for the application"
   type        = string
-  default     = "t3.medium"
+  default     = "example.com"
 }
 
-variable "node_desired_size_dr" {
-  description = "Desired number of nodes in the DR EKS node group (pilot light)"
-  type        = number
-  default     = 1
+variable "secondary_backup_bucket_name" {
+  description = "Name of the secondary backup bucket (from primary region)"
+  type        = string
+  default     = ""
 }
 
-variable "node_max_size" {
-  description = "Maximum number of nodes in the EKS node group"
-  type        = number
-  default     = 3
+variable "route53_zone_id" {
+  description = "Route53 hosted zone ID (from primary region)"
+  type        = string
+  default     = ""
 }
 
-variable "node_min_size_dr" {
-  description = "Minimum number of nodes in the DR EKS node group"
+variable "secondary_app_endpoint" {
+  description = "Secondary application endpoint"
+  type        = string
+  default     = "dr-app-lb.us-east-1.elb.amazonaws.com"
+}
+
+variable "secondary_api_endpoint" {
+  description = "Secondary API endpoint"
+  type        = string
+  default     = "dr-api-lb.us-east-1.elb.amazonaws.com"
+}
+
+variable "backup_retention_days" {
+  description = "Number of days to retain backups"
   type        = number
-  default     = 1
+  default     = 90
+}
+
+variable "noncurrent_version_retention_days" {
+  description = "Number of days to retain non-current versions"
+  type        = number
+  default     = 30
 }
 
 variable "environment" {
   description = "Environment name"
   type        = string
   default     = "dr"
+}
+
+variable "tags" {
+  description = "A map of tags to assign to the resource"
+  type        = map(string)
+  default = {
+    Project     = "disaster-recovery-demo"
+    Environment = "dr"
+    ManagedBy   = "terraform"
+  }
 }
