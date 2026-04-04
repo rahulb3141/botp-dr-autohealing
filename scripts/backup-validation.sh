@@ -10,7 +10,6 @@ echo "Validating Terraform deployments..."
 if [ -d "terraform/primary-region" ]; then
     cd terraform/primary-region
     terraform validate
-    terraform refresh -auto-approve
     cd ../..
 fi
 
