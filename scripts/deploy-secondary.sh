@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-echo "🚀 Deploying secondary region infrastructure and applications..."
+echo "🚀 Deploying DR environment (same region, different AZs)..."
 
 # Get values from primary region
 cd terraform/primary-region
@@ -10,11 +10,11 @@ SECONDARY_BUCKET=$(terraform output -raw secondary_backup_bucket 2>/dev/null || 
 ROUTE53_ZONE=$(terraform output -raw route53_zone_id 2>/dev/null || echo "")
 cd ../../
 
-# Deploy Terraform for secondary region
-echo "Deploying Terraform infrastructure for secondary region..."
+# Deploy Terraform for DR (same region)
+echo "Setting up DR configuration..."
 cd terraform/secondary-region
 
-# Set variables for secondary region
+# Set variables for DR
 export TF_VAR_secondary_backup_bucket_name="$SECONDARY_BUCKET"
 export TF_VAR_route53_zone_id="$ROUTE53_ZONE"
 
@@ -26,23 +26,21 @@ terraform apply -auto-approve tfplan
 
 cd ../../
 
-# Configure kubectl for secondary EKS cluster
-echo "Configuring kubectl for secondary cluster..."
-aws eks update-kubeconfig --region ${TF_VAR_secondary_region:-us-west-2} --name ${TF_VAR_existing_eks_cluster_name:-dr-cluster} --alias secondary-cluster
+# Use the same EKS cluster but deploy to different namespace/AZs
+echo "Deploying DR applications to existing cluster..."
+kubectl create namespace dr-demo --dry-run=client -o yaml | kubectl apply -f -
 
-# Verify cluster access
-kubectl cluster-info --context=secondary-cluster > logs/secondary-cluster-info.log
-
-# Deploy Kubernetes applications
-echo "Deploying Kubernetes applications to secondary cluster..."
-kubectl apply -f kubernetes/secondary/ --context=secondary-cluster
+# Deploy Kubernetes applications with DR configuration
+kubectl apply -f kubernetes/secondary/ -n dr-demo
 
 # Wait for deployments to be ready
-echo "Waiting for deployments to be ready..."
-kubectl wait --for=condition=available --timeout=300s deployment/sample-app --context=secondary-cluster
+echo "Waiting for DR deployments to be ready..."
+kubectl wait --for=condition=available --timeout=300s deployment/sample-app-dr -n dr-demo
 
-# Get load balancer endpoint
-echo "Getting load balancer endpoint..."
-kubectl get services --context=secondary-cluster > logs/secondary-services.log
+# Get service information
+echo "Getting DR service information..."
+kubectl get services -n dr-demo > logs/dr-services.log
 
-echo "✅ Secondary region deployment complete"
+echo "✅ DR environment deployment complete"
+echo "DR Namespace: dr-demo"
+echo "DR running in different AZs within same region"
