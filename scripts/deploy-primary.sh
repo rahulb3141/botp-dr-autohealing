@@ -3,7 +3,7 @@ set -e
 
 echo "🚀 Deploying primary region infrastructure and applications..."
 
-# Deploy Terraform for primary region
+## Deploy Terraform for primary region
 echo "Deploying Terraform infrastructure..."
 cd terraform/primary-region
 
