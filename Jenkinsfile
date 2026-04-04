@@ -5,7 +5,8 @@ pipeline {
         AWS_DEFAULT_REGION = 'us-east-1'
         TF_VAR_project_name = 'dr-demo'
         TF_VAR_primary_region = 'us-east-1'
-        TF_VAR_secondary_region = 'us-west-2'
+        TF_VAR_secondary_region = 'us-east-1'
+        TF_VAR_existing_vpc_name = 'eks-vpc'
     }
     
     stages {
