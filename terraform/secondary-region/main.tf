@@ -8,7 +8,8 @@ terraform {
 }
 
 provider "aws" {
-  region = var.primary_region 
+  region = var.primary_region  # Same region as primary
+}
 
 # Data sources for existing resources
 data "aws_caller_identity" "current" {}
@@ -125,4 +126,26 @@ resource "aws_cloudwatch_dashboard" "dr_dashboard" {
   dashboard_name = "${var.project_name}-dr-dashboard"
 
   dashboard_body = jsonencode({
-   
+    widgets = [
+      {
+        type   = "metric"
+        x      = 0
+        y      = 0
+        width  = 12
+        height = 6
+
+        properties = {
+          metrics = [
+            ["AWS/S3", "BucketSizeBytes", "BucketName", var.secondary_backup_bucket_name, "StorageType", "StandardStorage"],
+            ["AWS/S3", "NumberOfObjects", "BucketName", var.secondary_backup_bucket_name, "StorageType", "AllStorageTypes"]
+          ]
+          view    = "timeSeries"
+          stacked = false
+          region  = var.primary_region
+          title   = "DR S3 Backup Metrics"
+          period  = 300
+        }
+      }
+    ]
+  })
+}
