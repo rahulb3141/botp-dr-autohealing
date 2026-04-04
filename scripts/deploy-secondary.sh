@@ -7,7 +7,7 @@ echo "🚀 Deploying DR environment (same region, different AZs)..."
 cd terraform/primary-region
 PRIMARY_BUCKET=$(terraform output -raw primary_backup_bucket 2>/dev/null || echo "")
 SECONDARY_BUCKET=$(terraform output -raw secondary_backup_bucket 2>/dev/null || echo "")
-ROUTE53_ZONE=$(terraform output -raw route53_zone_id 2>/dev/null || echo "")
+
 cd ../../
 
 # Deploy Terraform for DR (same region)
@@ -16,7 +16,6 @@ cd terraform/secondary-region
 
 # Set variables for DR
 export TF_VAR_secondary_backup_bucket_name="$SECONDARY_BUCKET"
-export TF_VAR_route53_zone_id="$ROUTE53_ZONE"
 
 # Initialize and apply Terraform
 terraform init
