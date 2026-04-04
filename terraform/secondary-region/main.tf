@@ -96,28 +96,3 @@ resource "aws_s3_bucket_lifecycle_configuration" "secondary_backups" {
     }
   }
 }
-
-# Route 53 Records for DR (different subdomain)
-data "aws_route53_zone" "existing" {
-  count   = var.route53_zone_id != "" ? 1 : 0
-  zone_id = var.route53_zone_id
-}
-
-resource "aws_route53_record" "dr_direct" {
-  count   = var.route53_zone_id != "" ? 1 : 0
-  zone_id = data.aws_route53_zone.existing[0].zone_id
-  name    = "dr.${var.domain_name}"
-  type    = "CNAME"
-  ttl     = 300
-  records = [var.secondary_app_endpoint]
-}
-
-resource "aws_route53_record" "api_dr" {
-  count   = var.route53_zone_id != "" ? 1 : 0
-  zone_id = data.aws_route53_zone.existing[0].zone_id
-  name    = "api-dr.${var.domain_name}"
-  type    = "CNAME"
-  ttl     = 300
-  records = [var.secondary_api_endpoint]
-}
-
