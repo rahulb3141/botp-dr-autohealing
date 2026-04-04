@@ -22,20 +22,8 @@ variable "dr_availability_zones" {
   default     = ["us-east-1b", "us-east-1c"]  # Different AZs for DR simulation
 }
 
-variable "domain_name" {
-  description = "Domain name for the application"
-  type        = string
-  default     = "example.com"
-}
-
 variable "secondary_backup_bucket_name" {
   description = "Name of the secondary backup bucket (from primary region)"
-  type        = string
-  default     = ""
-}
-
-variable "route53_zone_id" {
-  description = "Route53 hosted zone ID (from primary region)"
   type        = string
   default     = ""
 }
